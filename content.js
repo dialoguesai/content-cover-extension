@@ -647,7 +647,7 @@
     }
     if (lastFilterActive === false) return;
     lastFilterActive = false;
-    showToast(`You are Reading with full exposure to ${adapter.displayName}'s full reality!`);
+    showToast(`You are exposed to ${adapter.displayName}'s full reality!`);
   }
 
   function showToast(message) {
