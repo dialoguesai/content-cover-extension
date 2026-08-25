@@ -208,10 +208,12 @@
 
     for (const el of document.querySelectorAll(adapter.hideSelector)) {
       if (coverTargets.has(el)) continue;
+      if (adapter.classifyHide && adapter.classifyHide(el) === "hold") continue;
       markReady(el);
     }
 
     for (const card of coverTargets) {
+      if (adapter.classifyHide && adapter.classifyHide(card) === "hold") continue;
       if (!observed.has(card)) {
         observed.add(card);
         io.observe(card);

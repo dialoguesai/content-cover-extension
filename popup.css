@@ -180,9 +180,10 @@ button {
   background: transparent;
   color: #666;
   border-radius: 0;
-  padding: 7px 8px 8px;
+  padding: 7px 4px 8px;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  white-space: nowrap;
 }
 
 .tabs button[aria-selected="true"] {
@@ -287,4 +288,44 @@ button.ghost {
   color: #666;
   font-size: 11px;
   word-break: break-all;
+}
+
+.sites-list {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.sites-kind {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 6px 0 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #444;
+  background: #f6f6f6;
+  border-bottom: 1px solid #ddd;
+}
+
+.sites-kind:not(:first-child) {
+  margin-top: 6px;
+}
+
+.site-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 3px 0;
+  border-bottom: 1px solid #ececec;
+}
+
+.site-row strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.site-row span {
+  color: #888;
+  font-size: 11px;
 }

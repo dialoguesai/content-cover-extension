@@ -20,6 +20,7 @@
     <div class="tabs" role="tablist" aria-label="Content Cover">
       <button id="tabFilters" type="button" role="tab" aria-selected="true" aria-controls="panelFilters">Filters</button>
       <button id="tabCovered" type="button" role="tab" aria-selected="false" aria-controls="panelCovered">History</button>
+      <button id="tabSites" type="button" role="tab" aria-selected="false" aria-controls="panelSites">Sites</button>
     </div>
 
     <section id="panelFilters" role="tabpanel" aria-labelledby="tabFilters">
@@ -58,7 +59,13 @@
       <div id="coveredList" class="covered-list"></div>
     </section>
 
+    <section id="panelSites" role="tabpanel" aria-labelledby="tabSites" hidden>
+      <p class="fine">Sites the filter can cover.</p>
+      <div id="sitesList" class="sites-list"></div>
+    </section>
+
     <script src="filter.js"></script>
+    <script src="catalog.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

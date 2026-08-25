@@ -310,5 +310,5 @@ const ContentCoverCatalog = (() => {
     };
   }
 
-  return { SITES, forHost, matchPatterns, byKind, toReadmeMarkdown };
+  return { SITES, forHost, matchPatterns, byKind, publicHost, KIND_ORDER, KIND_HEADING, toReadmeMarkdown };
 })();

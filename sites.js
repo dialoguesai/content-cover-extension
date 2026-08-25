@@ -425,21 +425,121 @@ const ContentCoverSites = (() => {
     return "ready";
   }
 
-  const LINKEDIN_CARD = "div.feed-shared-update-v2, article.feed-shared-update-v2, div[data-urn*='activity'], div[data-urn*='ugcPost']";
+  // 2026 feed wrappers use data-id (not data-urn) and have dropped
+  // feed-shared-update-v2 on many homepage renders. Prefer the outermost
+  // post shell so nested comment/share URNs do not steal the card.
+  const LINKEDIN_CARD = [
+    "div.feed-shared-update-v2",
+    "article.feed-shared-update-v2",
+    "div.update-components-update",
+    "article.update-components-update",
+    "div.update-v2",
+    "[data-view-name='feed-full-update']",
+    "[data-view-name='feed-discovery-update']",
+    "div.occludable-update",
+    "div.fie-impression-container",
+    "div[data-id^='urn:li:activity']",
+    "article[data-id^='urn:li:activity']",
+    "div[data-id^='urn:li:ugcPost']",
+    "div[data-id^='urn:li:share']",
+    "div[data-id^='urn:li:aggregated']",
+    "div[data-urn^='urn:li:activity']",
+    "div[data-urn^='urn:li:ugcPost']",
+    "div[data-urn^='urn:li:share']",
+    "div[data-urn^='urn:li:aggregatedShare']",
+  ].join(", ");
+
+  const LINKEDIN_CHROME =
+    "nav, header, footer, [role='banner'], [role='navigation'], .global-nav, " +
+    ".scaffold-layout__sidebar, aside.scaffold-layout__aside, .scaffold-layout__aside, " +
+    ".msg-overlay-list-bubble, .msg-overlay-conversation-bubble, #msg-overlay, .msg-overlay-container, " +
+    ".comments-comments-list, .comments-comment-item, .comments-comment-entity, .comments-comment-box, " +
+    ".share-box-feed-entry, [data-view-name='share-box'], .feed-identity-module, [data-view-name='feed-identity-module']";
 
   function linkedinCards(root) {
     const found = [];
-    for (const el of root.querySelectorAll(LINKEDIN_CARD)) {
-      if (el.closest("nav, header, footer, [role='navigation']")) continue;
-      if (el.querySelector(".feed-shared-update-v2, [data-urn*='activity']")) continue;
-      if (isTiny(el, 180, 60)) continue;
+    const seen = new Set();
+    const add = (el) => {
+      if (!el || seen.has(el) || found.includes(el)) return;
+      if (linkedinSkipChrome(el)) return;
+      if (linkedinNestedInCard(el)) return;
+      if (isTiny(el, 180, 60)) return;
+      if (oversized(el)) return;
+      seen.add(el);
       found.push(el);
+    };
+
+    for (const el of queryLightOrShadow(root, LINKEDIN_CARD)) add(el);
+
+    if (!found.length) {
+      for (const link of root.querySelectorAll('a[href*="/feed/update/"], a[href*="/posts/"]')) {
+        if (linkedinSkipChrome(link)) continue;
+        add(linkedinWalkUp(link));
+      }
+    }
+
+    if (!found.length) {
+      for (const el of linkedinFeedFallbacks(root)) add(el);
+    }
+
+    return found.filter((el) => !found.some((other) => other !== el && other.contains(el)));
+  }
+
+  function linkedinSkipChrome(el) {
+    return Boolean(el.closest(LINKEDIN_CHROME));
+  }
+
+  function linkedinNestedInCard(el) {
+    const parent = el.parentElement;
+    if (!parent || !parent.closest) return false;
+    const outer = parent.closest(LINKEDIN_CARD);
+    if (!outer || outer === el) return false;
+    if (oversized(outer)) return false;
+    return true;
+  }
+
+  function linkedinWalkUp(link) {
+    let node = link;
+    for (let i = 0; i < 14 && node && node !== document.body; i += 1) {
+      if (linkedinSkipChrome(node)) break;
+      const rect = node.getBoundingClientRect();
+      if (rect.width >= 240 && rect.height >= 80 && rect.height < window.innerHeight * 0.95) {
+        if (node.querySelector(".update-components-text, .update-components-actor, .feed-shared-update-v2__description, img")) {
+          return node;
+        }
+      }
+      node = node.parentElement;
+    }
+    return link.closest("article, div") || link;
+  }
+
+  function linkedinFeedFallbacks(root) {
+    const found = [];
+    const scroller = root.querySelector(".scaffold-finite-scroll__content");
+    if (!scroller) return found;
+    for (const child of scroller.children) {
+      let card = child;
+      if (child.children.length === 1 && child.children[0].matches("div, article")) card = child.children[0];
+      if (rawText(card).length < 24) continue;
+      if (!card.querySelector("a[href], img, .update-components-actor")) continue;
+      found.push(card);
     }
     return found;
   }
 
+  function linkedinUrn(el) {
+    const direct = (el.getAttribute && (el.getAttribute("data-id") || el.getAttribute("data-urn"))) || "";
+    if (/urn:li:(activity|ugcPost|share|aggregated)/i.test(direct)) return direct;
+    const nested =
+      el.querySelector &&
+      el.querySelector(
+        "[data-id^='urn:li:activity'], [data-id^='urn:li:ugcPost'], [data-urn^='urn:li:activity'], [data-urn^='urn:li:ugcPost']"
+      );
+    return (nested && (nested.getAttribute("data-id") || nested.getAttribute("data-urn"))) || "";
+  }
+
   function linkedinId(el) {
-    const urn = el.getAttribute && el.getAttribute("data-urn");
+    const urn = linkedinUrn(el);
     if (urn) return `linkedin:${urn}`;
     const link = el.querySelector('a[href*="/feed/update/"], a[href*="/posts/"]');
     const href = normalizeHref(link && link.getAttribute("href"));
@@ -448,21 +548,47 @@ const ContentCoverSites = (() => {
   }
 
   function linkedinLink(el) {
+    const urn = linkedinUrn(el);
+    const activity = urn && urn.match(/urn:li:activity:(\d+)/);
+    if (activity) return `https://www.linkedin.com/feed/update/urn:li:activity:${activity[1]}/`;
     const link = el.querySelector('a[href*="/feed/update/"], a[href*="/posts/"]') || el.querySelector("a[href]");
     return absoluteHref(link && link.getAttribute("href"));
   }
 
   function linkedinMeta(el) {
-    const title = textOf(
-      el.querySelector(".feed-shared-update-v2__description, .update-components-text, .feed-shared-text, span[dir='ltr']")
-    ) || textOf(el);
-    const source = textOf(el.querySelector(".update-components-actor__name, .feed-shared-actor__name"));
+    const title =
+      textOf(
+        el.querySelector(
+          ".update-components-text, .feed-shared-update-v2__description, .feed-shared-update-v2__commentary, .feed-shared-text, [data-test-id='main-feed-activity-card'] .break-words, span[dir='ltr']"
+        )
+      ) || textOf(el);
+    const source = textOf(
+      el.querySelector(".update-components-actor__title, .update-components-actor__name, .feed-shared-actor__name, .hoverable-link-text")
+    );
     return { title, subtitle: "", description: title, source };
   }
 
   function linkedinClassifyHide(el) {
+    if (linkedinSkipChrome(el) || linkedinNestedInCard(el)) return "ready";
+    if (isTiny(el, 180, 60)) return "hold";
     if (rawText(el).length < 8) return "hold";
     return "ready";
+  }
+
+  function queryLightOrShadow(root, selector) {
+    const found = [];
+    try {
+      found.push(...root.querySelectorAll(selector));
+    } catch (_err) {}
+    if (found.length) return found;
+    const all = root.querySelectorAll ? root.querySelectorAll("*") : [];
+    for (const el of all) {
+      if (!el.shadowRoot) continue;
+      try {
+        found.push(...el.shadowRoot.querySelectorAll(selector));
+      } catch (_err) {}
+    }
+    return found;
   }
 
   const TIKTOK_CARD =
@@ -740,44 +866,56 @@ const ContentCoverSites = (() => {
     return "ready";
   }
 
-  const NEWS_HIDE =
-    'article, [data-testid*="card" i], [class*="story-wrapper" i], [class*="StoryCard"], [class*="story-card" i], [class*="teaser" i], [data-type="article"]';
+  const NEWS_SEED =
+    "article, [data-testid*='card' i], [class*='story-wrapper' i], [class*='StoryCard'], [class*='story-card' i], [class*='teaser' i], [data-qa*='card' i], [data-qa*='teaser' i], [data-type='article']";
+  const NEWS_HEADING =
+    "h2 a[href], h3 a[href], h4 a[href], a[href] h2, a[href] h3, a[href] h4, [data-testid='headline' i], [data-qa='headline' i], a[href] [data-testid='headline' i]";
+  const NEWS_UNIT =
+    "article, li, figure, [class*='card' i], [class*='teaser' i], [class*='story-card' i], [data-qa*='card' i], [data-testid*='card' i], [data-qa*='teaser' i]";
+  const NEWS_TITLE = "h1, h2, h3, h4, [data-testid='headline' i], [data-qa='headline' i], [class*='headline' i]";
+  const NEWS_HIDE = `${NEWS_SEED}, ${NEWS_HEADING}`;
 
   function newsCards(root) {
     const found = [];
     const seen = new Set();
+    const seeds = [];
 
-    for (const el of root.querySelectorAll("article, [data-testid*='card' i], [class*='story-wrapper' i], [class*='StoryCard'], [class*='story-card' i], [class*='teaser' i]")) {
-      if (!looksLikeNewsCard(el, seen)) continue;
-      seen.add(el);
-      found.push(el);
+    for (const el of root.querySelectorAll(NEWS_SEED)) seeds.push(el);
+    for (const heading of root.querySelectorAll(NEWS_HEADING)) {
+      const link = heading.closest("a[href]") || heading.querySelector("a[href]") || heading;
+      seeds.push(link);
     }
 
-    for (const heading of root.querySelectorAll("h2 a[href], h3 a[href], a[href] h2, a[href] h3")) {
-      const link = heading.closest("a[href]") || heading;
-      if (!newsStoryHref(link.getAttribute("href") || "")) continue;
-      if (link.closest("article, [class*='story-wrapper' i], [class*='StoryCard'], [class*='teaser' i]")) continue;
-      const card = newsLinkCard(link);
+    for (const seed of seeds) {
+      if (newsSkipChrome(seed) || newsIsArticleBody(seed) || newsIsBareAd(seed)) continue;
+      const card = newsTeaserRoot(seed);
       if (!card || seen.has(card)) continue;
       if (!looksLikeNewsCard(card, seen)) continue;
       seen.add(card);
       found.push(card);
     }
 
-    return found;
+    return found.filter((el) => !found.some((other) => other !== el && other.contains(el)));
   }
 
   function looksLikeNewsCard(el, seen) {
     if (!el || seen.has(el)) return false;
     if (newsSkipChrome(el)) return false;
     if (newsIsArticleBody(el)) return false;
-    if (el.querySelector && el.querySelector("article") && !el.matches("article")) return false;
-    if (isTiny(el, 80, 36)) return false;
+    if (newsIsBareAd(el)) return false;
+    if (!el.matches("article")) {
+      const inner = el.querySelector && el.querySelector("article");
+      if (inner && !isNewsFragment(inner) && !isNewsTooSmall(inner) && !oversized(inner) && inner !== el) {
+        return false;
+      }
+    }
+    if (isNewsTooSmall(el) || isNewsFragment(el)) return false;
     if (oversized(el)) return false;
     const text = rawText(el);
     if (text.length < 12) return false;
     const link = el.matches("a[href]") ? el : el.querySelector("a[href]");
     if (!link) return false;
+    if (!newsStoryHref(link.getAttribute("href") || "") && !newsStoryPaths(el).length) return false;
     return true;
   }
 
@@ -797,6 +935,16 @@ const ContentCoverSites = (() => {
     );
   }
 
+  function newsIsBareAd(el) {
+    const slot = el.closest(
+      "[data-qa$='-ad'], [data-ad-module], [id*='taboola' i], .OUTBRAIN, [class*='ad-slot' i], [data-testid*='ad-slot' i]"
+    );
+    if (!slot) return false;
+    const title = textOf(el.querySelector(NEWS_TITLE));
+    if (title.length >= 16 && newsStoryPaths(el).length) return false;
+    return true;
+  }
+
   function newsStoryHref(href) {
     if (!href || /^(javascript:|mailto:|#)/i.test(href)) return false;
     const path = normalizeHref(href).split("?")[0];
@@ -807,13 +955,104 @@ const ContentCoverSites = (() => {
     return /\/20\d\d\//.test(path) || path.split("/").filter(Boolean).length >= 2;
   }
 
+  function newsArticleHref(href) {
+    if (!href || /^(javascript:|mailto:|#)/i.test(href)) return false;
+    const path = normalizeHref(href).split("?")[0];
+    if (/\.(jpg|jpeg|png|gif|webp|svg|js|css)(\?|$)/i.test(path)) return false;
+    if (/\/(wp-apps|wp-stat|imrs\.php|resizer)\b/i.test(path)) return false;
+    return /\/20\d\d\//.test(path) || /\/(live|interactive|video)\/\d{4}\//.test(path);
+  }
+
+  function newsStoryPaths(el) {
+    const paths = [];
+    const push = (href) => {
+      if (!newsArticleHref(href || "")) return;
+      paths.push(normalizeHref(href).split("?")[0].replace(/\/$/, ""));
+    };
+    if (el.querySelectorAll) {
+      for (const link of el.querySelectorAll("a[href]")) push(link.getAttribute("href"));
+    }
+    if (el.matches && el.matches("a[href]")) push(el.getAttribute("href"));
+    return [...new Set(paths)];
+  }
+
+  function newsHasTitle(el) {
+    return Boolean((el.matches && el.matches(NEWS_TITLE)) || (el.querySelector && el.querySelector(NEWS_TITLE))) ||
+      (el.matches && el.matches("a") && rawText(el).length >= 12);
+  }
+
+  function isNewsFragment(el) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return false;
+    const hasTitle = newsHasTitle(el);
+    if (rect.width > 0 && rect.height > 0 && rect.width < 140 && rect.height < 72 && !hasTitle) return true;
+    if (rect.height > 0 && rect.height < 36 && rect.width < 160) return true;
+    if (!hasTitle && rawText(el).length < 24 && rect.width > 0 && rect.width < 140) return true;
+    return false;
+  }
+
+  function isNewsTooSmall(el) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return false;
+    if (rect.width >= 140 && rect.height >= 18) return false;
+    if (rect.width >= 96 && rect.height >= 72) return false;
+    return true;
+  }
+
+  function newsTeaserRoot(start) {
+    if (!start) return null;
+    let best = start;
+    let node = start;
+    for (let i = 0; i < 14 && node && node !== document.documentElement; i += 1) {
+      const parent = node.parentElement;
+      if (!parent || parent === document.body) break;
+      if (newsSkipChrome(parent) || newsIsArticleBody(parent)) break;
+      if (parent.matches("main, [role='main'], body, html")) break;
+      if (oversized(parent)) break;
+
+      const parentRect = parent.getBoundingClientRect();
+      const childRect = node.getBoundingClientRect();
+      if (parentRect.height > window.innerHeight * 0.85 || parentRect.width > window.innerWidth * 0.98) break;
+
+      const childPaths = newsStoryPaths(node);
+      const parentPaths = newsStoryPaths(parent);
+      if (parentPaths.length >= 3 && parentPaths.length > Math.max(childPaths.length, 1)) break;
+
+      const parentIsUnit = parent.matches(NEWS_UNIT);
+      const parentHasTitle = newsHasTitle(parent);
+      const parentHasMedia = Boolean(parent.querySelector("img, picture, video"));
+      const childTiny = isNewsFragment(node) || isNewsTooSmall(node);
+      const singleStory = parentPaths.length <= 2;
+      const parentCompact = parentRect.height < 640 && parentRect.height <= Math.max(childRect.height * 8, 560);
+
+      if (childTiny && singleStory && (parentIsUnit || parentHasTitle)) {
+        best = parent;
+        node = parent;
+        continue;
+      }
+      if (parentIsUnit && parentHasTitle && singleStory && parentCompact) {
+        best = parent;
+        node = parent;
+        continue;
+      }
+      if (singleStory && parentHasTitle && (parentHasMedia || parentIsUnit) && parentCompact && parentRect.height > childRect.height + 8) {
+        best = parent;
+        node = parent;
+        continue;
+      }
+      // Anonymous wrappers between a headline link and the real card
+      // (WaPo `div.card-left` / `div.card-top`) — keep climbing.
+      if (singleStory && parentCompact && !parentIsUnit) {
+        node = parent;
+        continue;
+      }
+      break;
+    }
+    return best;
+  }
+
   function newsLinkCard(link) {
-    const rect = link.getBoundingClientRect();
-    if (rect.width >= 120 && rect.height >= 40 && rect.height < window.innerHeight * 1.1) return link;
-    const parent = link.closest("li, article, figure, [class*='card' i]") || link.parentElement;
-    if (!parent || parent === document.body) return link;
-    if (oversized(parent)) return link;
-    return parent;
+    return newsTeaserRoot(link) || link;
   }
 
   function newsId(el) {
@@ -830,7 +1069,7 @@ const ContentCoverSites = (() => {
 
   function newsMeta(el) {
     const title =
-      textOf(el.querySelector("h1, h2, h3, h4, [class*='headline' i], [class*='title' i]")) ||
+      textOf(el.querySelector(NEWS_TITLE)) ||
       textOf(el.matches("a") ? el : el.querySelector("a"));
     const subtitle = textOf(el.querySelector("[class*='summary' i], [class*='dek' i], [class*='standfirst' i], p"));
     const source = textOf(el.querySelector("[class*='kicker' i], [class*='byline' i], time"));
@@ -838,8 +1077,8 @@ const ContentCoverSites = (() => {
   }
 
   function newsClassifyHide(el) {
-    if (newsSkipChrome(el) || newsIsArticleBody(el)) return "ready";
-    if (el.querySelector && el.querySelector("article") && !el.matches("article")) return "ready";
+    if (newsSkipChrome(el) || newsIsArticleBody(el) || newsIsBareAd(el)) return "ready";
+    if (isNewsFragment(el) || isNewsTooSmall(el)) return "hold";
     if (rawText(el).length < 12 && !el.querySelector("img, picture")) return "hold";
     return "ready";
   }

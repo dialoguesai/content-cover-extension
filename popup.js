@@ -18,29 +18,40 @@ const coveredList = document.getElementById("coveredList");
 const clearCovered = document.getElementById("clearCovered");
 const tabFilters = document.getElementById("tabFilters");
 const tabCovered = document.getElementById("tabCovered");
+const tabSites = document.getElementById("tabSites");
 const panelFilters = document.getElementById("panelFilters");
 const panelCovered = document.getElementById("panelCovered");
+const panelSites = document.getElementById("panelSites");
+const sitesList = document.getElementById("sitesList");
+
+const tabs = {
+  filters: { tab: tabFilters, panel: panelFilters },
+  covered: { tab: tabCovered, panel: panelCovered },
+  sites: { tab: tabSites, panel: panelSites },
+};
 
 let settings = ContentCoverFilter.normalizeSettings(defaults);
 let coveredCount = 0;
 
-chrome.storage.sync.get(defaults, (stored) => {
-  settings = ContentCoverFilter.normalizeSettings(stored);
-  render();
-});
+if (typeof chrome !== "undefined" && chrome.storage) {
+  chrome.storage.sync.get(defaults, (stored) => {
+    settings = ContentCoverFilter.normalizeSettings(stored);
+    render();
+  });
 
-chrome.storage.local.get({ coveredItems: [] }, (stored) => {
-  renderCovered(stored.coveredItems || []);
-});
+  chrome.storage.local.get({ coveredItems: [] }, (stored) => {
+    renderCovered(stored.coveredItems || []);
+  });
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.coveredItems) {
-    renderCovered(changes.coveredItems.newValue || []);
-  }
-  if ((area === "session" || area === "local") && changes.modelProgress) {
-    applyProgress(changes.modelProgress.newValue);
-  }
-});
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.coveredItems) {
+      renderCovered(changes.coveredItems.newValue || []);
+    }
+    if ((area === "session" || area === "local") && changes.modelProgress) {
+      applyProgress(changes.modelProgress.newValue);
+    }
+  });
+}
 
 coveredList.addEventListener("scroll", hideReasonTip);
 
@@ -50,6 +61,7 @@ clearCovered.addEventListener("click", () => {
 
 tabFilters.addEventListener("click", () => showTab("filters"));
 tabCovered.addEventListener("click", () => showTab("covered"));
+tabSites.addEventListener("click", () => showTab("sites"));
 
 dontShowEnabled.addEventListener("change", () => save({ dontShowEnabled: dontShowEnabled.checked }));
 dontShowAdd.addEventListener("click", addPhrase);
@@ -75,12 +87,82 @@ focusThreshold.addEventListener("input", () => {
 });
 
 function showTab(name) {
-  const filters = name === "filters";
-  tabFilters.setAttribute("aria-selected", String(filters));
-  tabCovered.setAttribute("aria-selected", String(!filters));
-  panelFilters.hidden = !filters;
-  panelCovered.hidden = filters;
-  if (filters) hideReasonTip();
+  for (const [id, { tab, panel }] of Object.entries(tabs)) {
+    const selected = id === name;
+    tab.setAttribute("aria-selected", String(selected));
+    panel.hidden = !selected;
+  }
+  if (name !== "covered") hideReasonTip();
+}
+
+function kindHeading(kind) {
+  const labels = typeof ContentCoverCatalog !== "undefined" ? ContentCoverCatalog.KIND_HEADING : null;
+  if (labels && labels[kind]) return labels[kind];
+  const text = String(kind || "other");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function siteHost(site) {
+  if (typeof ContentCoverCatalog !== "undefined" && ContentCoverCatalog.publicHost) {
+    return ContentCoverCatalog.publicHost(site);
+  }
+  const hosts = (site && site.hosts) || [];
+  return hosts.find((host) => host.startsWith("www.")) || hosts[0] || "";
+}
+
+function renderSites() {
+  sitesList.replaceChildren();
+  const catalog = typeof ContentCoverCatalog !== "undefined" ? ContentCoverCatalog : null;
+  const sites = catalog && Array.isArray(catalog.SITES) ? catalog.SITES : null;
+  const intro = panelSites.querySelector(".fine");
+  if (!sites) {
+    if (intro) intro.textContent = "Sites the filter can cover.";
+    const empty = document.createElement("p");
+    empty.className = "fine";
+    empty.textContent = "Couldn’t load the supported sites list.";
+    sitesList.appendChild(empty);
+    return;
+  }
+  if (intro) intro.textContent = `${sites.length} sites the filter can cover.`;
+  if (!sites.length) {
+    const empty = document.createElement("p");
+    empty.className = "fine";
+    empty.textContent = "No supported sites in the catalog.";
+    sitesList.appendChild(empty);
+    return;
+  }
+
+  const order = Array.isArray(catalog.KIND_ORDER) ? catalog.KIND_ORDER.slice() : [];
+  const seen = new Set(order);
+  for (const site of sites) {
+    if (site.kind && !seen.has(site.kind)) {
+      order.push(site.kind);
+      seen.add(site.kind);
+    }
+  }
+
+  for (const kind of order) {
+    const group = catalog.byKind ? catalog.byKind(kind) : sites.filter((site) => site.kind === kind);
+    if (!group.length) continue;
+    const heading = document.createElement("h2");
+    heading.className = "sites-kind";
+    heading.textContent = kindHeading(kind);
+    sitesList.appendChild(heading);
+    for (const site of group) {
+      const row = document.createElement("div");
+      row.className = "site-row";
+      const name = document.createElement("strong");
+      name.textContent = site.name;
+      row.appendChild(name);
+      const host = siteHost(site);
+      if (host) {
+        const meta = document.createElement("span");
+        meta.textContent = host;
+        row.appendChild(meta);
+      }
+      sitesList.appendChild(row);
+    }
+  }
 }
 
 function addPhrase() {
@@ -271,5 +353,8 @@ function hideReasonTip() {
   reasonTip = null;
 }
 
-refreshModelStatus();
-setInterval(refreshModelStatus, 800);
+renderSites();
+if (typeof chrome !== "undefined" && chrome.runtime) {
+  refreshModelStatus();
+  setInterval(refreshModelStatus, 800);
+}
