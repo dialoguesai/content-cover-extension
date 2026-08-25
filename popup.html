@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Content Cover</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <h1>Content Cover</h1>
+    <p class="hint">Grey blocks hide posts. Click a block to reveal it.</p>
+    <div id="setup" class="setup" hidden>
+      <p class="setup-title">Setting up for first use</p>
+      <div id="setupBar" class="setup-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="setupFill" class="setup-fill"></div>
+      </div>
+      <p id="setupMeta" class="fine">Loading the local model.</p>
+    </div>
+    <p id="modelStatus" class="status">Model: starting…</p>
+
+    <div class="tabs" role="tablist" aria-label="Content Cover">
+      <button id="tabFilters" type="button" role="tab" aria-selected="true" aria-controls="panelFilters">Filters</button>
+      <button id="tabCovered" type="button" role="tab" aria-selected="false" aria-controls="panelCovered">History</button>
+    </div>
+
+    <section id="panelFilters" role="tabpanel" aria-labelledby="tabFilters">
+      <label class="check">
+        <input id="dontShowEnabled" type="checkbox" />
+        Don’t show
+      </label>
+      <p class="fine">Hide items similar to these phrases.</p>
+      <div class="add-row">
+        <input id="dontShowInput" type="text" placeholder="Add a phrase" maxlength="80" />
+        <button id="dontShowAdd" type="button">Add</button>
+      </div>
+      <div id="dontShowList" class="chips"></div>
+      <label for="dontShowThreshold">Don’t-show sensitivity</label>
+      <input id="dontShowThreshold" type="range" min="15" max="85" step="5" value="45" />
+
+      <label class="check">
+        <input id="focusEnabled" type="checkbox" />
+        Pinned focus
+      </label>
+      <p class="fine">Only items about this stay visible. Everything else is covered.</p>
+      <div class="focus-compose">
+        <textarea id="focusText" rows="3" maxlength="400" placeholder="What you want to see"></textarea>
+        <button id="focusApply" type="button">Filter</button>
+      </div>
+      <label for="focusThreshold">How close it must be</label>
+      <input id="focusThreshold" type="range" min="28" max="75" step="1" value="42" />
+    </section>
+
+    <section id="panelCovered" role="tabpanel" aria-labelledby="tabCovered" hidden>
+      <div class="covered-head">
+        <label>History</label>
+        <button id="clearCovered" type="button" class="ghost">Clear</button>
+      </div>
+      <p class="fine">Titles and links the filter hid.</p>
+      <div id="coveredList" class="covered-list"></div>
+    </section>
+
+    <script src="filter.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
