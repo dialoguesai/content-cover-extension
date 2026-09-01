@@ -1,0 +1,19 @@
+Content Cover
+Copyright 2026 Dialogues and contributors
+
+This product includes software and model weights developed by third parties.
+
+Transformers.js
+Copyright (c) Hugging Face
+Licensed under the MIT License.
+https://github.com/huggingface/transformers.js
+
+ONNX Runtime
+Copyright (c) Microsoft Corporation
+Licensed under the MIT License.
+https://github.com/microsoft/onnxruntime
+
+all-MiniLM-L6-v2 (Xenova / sentence-transformers)
+Licensed under the Apache License, Version 2.0.
+https://huggingface.co/Xenova/all-MiniLM-L6-v2
+https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2

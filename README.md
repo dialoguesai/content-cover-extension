@@ -1,19 +1,59 @@
-# Content Cover
+<p align="center">
+  <img src="icons/icon-48.png" alt="Content Cover" width="96" height="96" />
+</p>
 
-A Chromium extension that covers posts and headlines with a light grey block until you choose to see them. Click a block to uncover that item for the rest of the visit.
+<h1 align="center">Content Cover</h1>
 
-Don’t-show hides things you asked not to see. Pinned focus keeps the things you asked to see and covers the rest. Scoring runs on your machine with a bundled MiniLM model — nothing is sent to a network.
+<p align="center">
+  <strong>Cover posts and headlines until you choose to see them.</strong>
+</p>
 
-One package works in **Chrome** and **Arc**.
+<p align="center">
+  <a href="https://github.com/dialoguesai/content-cover-extension">GitHub</a>
+  ·
+  Chrome · Arc · Edge (Chromium)
+  ·
+  Manifest V3
+</p>
 
-## Install
+<p align="center">
+  Don’t-show hides what you asked not to see. Pinned focus keeps what you asked to see and covers the rest.<br />
+  Scoring runs on your machine with a bundled MiniLM model — nothing is sent to a network.
+</p>
+
+---
+
+## Why use it
+
+Feeds are designed to keep you scrolling. Content Cover puts a light grey block over posts and headlines that do not match the filters you set. Click a block to uncover that item for the rest of the visit.
+
+| You get | What it means |
+|--------|----------------|
+| **Don’t show** | Hide items whose title or text matches, or is similar to, your phrases. |
+| **Pinned focus** | Type what you want to see. Items that are not close to that text are covered. |
+| **On-device scoring** | A bundled MiniLM model runs locally. No account. No analytics. No phone-home. |
+| **Click to reveal** | One click uncovers a single item until you reload. |
+| **History** | See titles and links the filters hid, then open or clear them. |
+
+This is a standalone browser extension. It does not sync filters, upload page content, or talk to any Dialogues product.
+
+---
+
+## Install from GitHub
+
+```bash
+git clone https://github.com/dialoguesai/content-cover-extension.git
+cd content-cover-extension
+```
+
+Load the unpacked folder in Chromium:
 
 ### Chrome
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top right)
 3. Click **Load unpacked**
-4. Select this folder: `content-cover-extension`
+4. Select the cloned folder (the directory that contains `manifest.json`)
 
 Pin the extension if you want the icon always visible.
 
@@ -22,9 +62,17 @@ Pin the extension if you want the icon always visible.
 1. Open **Extensions** → **Manage extensions**, or go to `chrome://extensions`
 2. Turn on **Developer mode**
 3. Click **Load unpacked**
-4. Select this folder: `content-cover-extension`
+4. Select the cloned folder
+
+### Edge
+
+Same steps at `edge://extensions`.
 
 Reload the unpacked extension after updates.
+
+> **Chrome Web Store:** A store listing may use a fixed extension ID; install steps will match the store page when published.
+
+---
 
 ## Use
 
@@ -35,8 +83,26 @@ Reload the unpacked extension after updates.
 3. Click a grey block once to uncover that item for the rest of the page visit.
 4. Right-click a visible post and choose **Hide this kind of thing** to add its title to Don’t show.
 5. Open the **History** tab to see titles and links the filters hid. Click a row to open it; **Clear** empties the log.
+6. Open the **Sites** tab to see every host the filter can cover.
 
 If every filter is off, a toast says you are reading with full exposure to that site.
+
+---
+
+## How it works
+
+```text
+  Page cards  →  Site adapter  →  Local MiniLM score  →  Grey cover (or leave visible)
+```
+
+1. A site adapter finds posts and headlines on the current page.
+2. The background worker scores title and text against your Don’t-show phrases and pinned-focus text.
+3. Matching items get a grey overlay. You can uncover one item with a click.
+4. Covered titles and links are stored in extension history until you clear them.
+
+Scoring uses [Transformers.js](https://github.com/huggingface/transformers.js) and a quantized [all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2) model bundled in this repository. Chrome extensions cannot load scripts from a CDN, so the model and ONNX Runtime WASM live in `vendor/` and `models/`.
+
+---
 
 ## Supported sites
 
@@ -264,6 +330,8 @@ Site layouts change. If covers miss cards after a redesign, the selectors in `si
 node scripts/sync-public-docs.mjs
 ```
 
+---
+
 ## Other sites we may support
 
 Nothing in this section is covered today. Mail, DMs, documents, and banking stay out of scope.
@@ -275,9 +343,56 @@ Nothing in this section is covered today. Mail, DMs, documents, and banking stay
 - **Shopping and marketplaces** — Etsy (`www.etsy.com`), Facebook Marketplace (`www.facebook.com/marketplace`). Amazon and eBay already ship.
 - **Work feeds** — Slack and Microsoft Teams activity, Notion home (`www.notion.so`). GitHub’s dashboard feed already ships.
 
-## Notes
+---
 
+## Privacy
+
+- Filters, history, and model progress stay in `chrome.storage` on this device.
+- The extension does not need an account and does not phone home.
+- The content security policy is `script-src 'self' 'wasm-unsafe-eval'` with `connect-src 'self'`. The local model never fetches weights from Hugging Face.
 - Uncovered items stay revealed until you reload the page.
 - The extension does not cover video players, comments, article bodies, Instagram stories, or DMs.
 - Don’t-show fails open if the local model is still loading (items stay visible unless a keyword matched). Pinned focus fails closed for unmatched items until a score is ready.
-- This extension does not need an account and does not phone home.
+
+---
+
+## Troubleshooting
+
+| Issue | What to try |
+|-------|-------------|
+| Nothing is covered | Turn on **Don’t show** with at least one phrase, or **Pinned focus** with text, then reload the page. |
+| Model stuck on “starting” | Wait for the first-use progress bar. If it fails, reload the extension and reopen the popup. |
+| Covers miss cards after a site redesign | Update selectors in `sites.js`, then reload the extension and the tab. |
+| History is empty | History only records items the filter hid. Clear it from the **History** tab. |
+| Debug logging | `chrome://extensions` → **Content Cover** → **Service worker** → Console. |
+
+---
+
+## For developers
+
+| Item | Value |
+|------|--------|
+| Manifest | V3 |
+| Filter engine | `filter.js` |
+| Site catalog | `catalog.js` |
+| Site adapters | `sites.js` |
+| Local model | `offscreen.js` + `models/Xenova/all-MiniLM-L6-v2/` |
+| Vendored runtime | `vendor/transformers.js` and ONNX Runtime WASM |
+
+To add a site: add it to `catalog.js`, write or reuse an adapter in `sites.js`, then run `node scripts/sync-public-docs.mjs` so `manifest.json` and this README stay in sync.
+
+---
+
+## License
+
+Copyright 2026 Dialogues and contributors.
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
+Third-party notices for the bundled model and runtime are in [NOTICE](NOTICE).
+
+---
+
+## Version
+
+**1.4.3** — Content Cover (Manifest V3)
