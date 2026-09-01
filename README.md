@@ -5,7 +5,7 @@
 <h1 align="center">Content Cover</h1>
 
 <p align="center">
-  <strong>Cover posts and headlines until you choose to see them.</strong>
+  <strong>Cover the noise. Keep what you want to see.</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  Don’t-show hides what you asked not to see. Pinned focus keeps what you asked to see and covers the rest.<br />
+  Look for what you asked to see. Block distractions — or things you already know you don’t want to encounter at all.<br />
   Scoring runs on your machine with a bundled MiniLM model — nothing is sent to a network.
 </p>
 
@@ -25,15 +25,17 @@
 
 ## Why use it
 
-Feeds are designed to keep you scrolling. Content Cover puts a light grey block over posts and headlines that do not match the filters you set. Click a block to uncover that item for the rest of the visit.
+Most of a feed is not what you came for. Content Cover covers the rest so you can look for what you want to see — and keep known noise out of the day entirely.
+
+Don’t show blocks distractions and things you don’t want to encounter at all. Pinned focus keeps only what you asked to see. What gets covered stays covered until you choose; the feed does not keep waving rejected noise at you.
 
 | You get | What it means |
 |--------|----------------|
-| **Don’t show** | Hide items whose title or text matches, or is similar to, your phrases. |
-| **Pinned focus** | Type what you want to see. Items that are not close to that text are covered. |
+| **Don’t show** | Block distractions, or known things you don’t want to encounter at all. |
+| **Pinned focus** | Name what you are looking for. Everything else stays covered. |
 | **On-device scoring** | A bundled MiniLM model runs locally. No account. No analytics. No phone-home. |
-| **Click to reveal** | One click uncovers a single item until you reload. |
-| **History** | See titles and links the filters hid, then open or clear them. |
+| **Click to reveal** | Uncover one item, on purpose, for the rest of the visit. |
+| **History** | A ledger of what was held out of the page — there if you ask, not in the feed. |
 
 This is a standalone browser extension. It does not sync filters, upload page content, or talk to any Dialogues product.
 
@@ -78,8 +80,8 @@ Reload the unpacked extension after updates.
 
 1. Open any [supported site](#supported-sites).
 2. Click the extension icon and set filters:
-   - **Don’t show** — hide items whose title or text matches, or is similar to, your phrases. Add a phrase, then set how strict the match should be.
-   - **Pinned focus** — type what you want to see, then click **Filter**. Items that are not close to that text are covered.
+   - **Don’t show** — block distractions and things you don’t want to encounter. Add a phrase, then set how strict the match should be.
+   - **Pinned focus** — type what you want to see, then click **Filter**. Everything else stays covered.
 3. Click a grey block once to uncover that item for the rest of the page visit.
 4. Right-click a visible post and choose **Hide this kind of thing** to add its title to Don’t show.
 5. Open the **History** tab to see titles and links the filters hid. Click a row to open it; **Clear** empties the log.

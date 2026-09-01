@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Content Cover",
   "version": "1.4.3",
-  "description": "Cover posts and headlines with grey blocks using don’t-show and focus filters.",
+  "description": "Cover the noise. Keep what you want to see. Block distractions, or things you don’t want to encounter at all.",
   "permissions": [
     "storage",
     "offscreen",
