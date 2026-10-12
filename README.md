@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icons/icon-48.png" alt="Content Cover" width="96" height="96" />
+  <img src="icons/icon-128.png" alt="Content Cover" width="96" height="96" />
 </p>
 
 <h1 align="center">Content Cover</h1>
@@ -398,3 +398,7 @@ Third-party notices for the bundled model and runtime are in [NOTICE](NOTICE).
 ## Version
 
 **1.4.3** — Content Cover (Manifest V3)
+
+## Icon assets
+
+The supplied transparent artwork is preserved in `icons/icon-source.png`. Install Pillow (`python3 -m pip install Pillow`), then run `python3 scripts/make-icons.py` to regenerate the 16, 32, 48, and 128 px toolbar and extension icons.
