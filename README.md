@@ -401,4 +401,4 @@ Third-party notices for the bundled model and runtime are in [NOTICE](NOTICE).
 
 ## Icon assets
 
-Full app artwork is preserved in `icons/icon-source.png`; transparent browser-toolbar artwork is in `icons/toolbar-source.png`. The manifest uses `icon-*` for extension listings and `toolbar-*` for the installed toolbar button. Install Pillow (`python3 -m pip install Pillow`), then run `python3 scripts/make-icons.py` to regenerate both sets at 16, 32, 48, and 128 px.
+Full app artwork, with the white outer margin removed and the dark rounded tile retained, is preserved in `icons/icon-source.png`; transparent browser-toolbar artwork is in `icons/toolbar-source.png`. The manifest uses `icon-*` for extension listings and `toolbar-*` for the installed toolbar button. Install Pillow (`python3 -m pip install Pillow`), then run `python3 scripts/make-icons.py` to regenerate both sets at 16, 32, 48, and 128 px.
